@@ -1,0 +1,769 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Results | Hybrid Health System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/result.css">
+</head>
+<body class="antialiased bg-[#0B1120] text-white">
+    <nav class="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0B1120]/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                    <span class="font-bold text-slate-900 text-xl">GPD</span>
+                </div>
+                <span class="font-bold text-lg">Prediction Results</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-32 pb-20">
+        <div class="max-w-4xl mx-auto px-6" id="results-container">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sky-600/20 border border-sky-500 mb-4">
+                    <i class="fas fa-spinner fa-spin text-2xl text-sky-400"></i>
+                </div>
+                <h1 class="text-3xl font-bold">Analyzing Results...</h1>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const result = JSON.parse(sessionStorage.getItem('prediction_result') || '{}');
+            displayResults(result);
+        });
+
+        function displayResults(data) {
+            const container = document.getElementById('results-container');
+            
+            if (data.error) {
+                container.innerHTML = `
+                    <div class="bg-rose-900/20 border border-rose-500 rounded-xl p-8 text-center">
+                        <i class="fas fa-exclamation-circle text-4xl text-rose-500 mb-4"></i>
+                        <h2 class="text-2xl font-bold mb-2">Unable to Predict</h2>
+                        <p class="text-slate-300 mb-6">${data.error}</p>
+                        <button onclick="window.location.href='/symptoms'" class="px-6 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="space-y-8">
+                    ${data.condition && data.condition !== 'Model not trained' ? `
+                    <div class="bg-gradient-to-r from-emerald-900/40 to-sky-900/40 border border-emerald-500/50 rounded-xl p-8">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl text-emerald-400"><i class="fas fa-check-circle"></i></div>
+                            <div>
+                                <h2 class="text-2xl font-bold mb-2">Primary Prediction: ${data.condition}</h2>
+                                <p class="text-emerald-200">Based on your symptoms and psychological screening</p>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${data.ml && data.ml.top3 ? `
+                    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Top Possible Conditions</h3>
+                        <div class="space-y-3">
+                            ${data.ml.top3.map((disease, idx) => `
+                                <div class="flex items-center gap-4">
+                                    <div class="text-lg font-bold text-sky-400 w-8">#${idx + 1}</div>
+                                    <div class="flex-1">
+                                        <p class="font-semibold">${disease.disease}</p>
+                                        <div class="w-full bg-slate-700 rounded-full h-2 mt-1">
+                                            <div class="bg-sky-500 h-2 rounded-full" style="width: ${disease.probability * 100}%"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-slate-400">${(disease.probability * 100).toFixed(1)}%</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${data.psychology ? `
+                    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Psychological Assessment</h3>
+                        <div class="space-y-3 text-sm">
+                            <p><strong>Stress:</strong> ${data.psychology.stress || 'N/A'}</p>
+                            <p><strong>Anxiety:</strong> ${data.psychology.anxiety || 'N/A'}</p>
+                            <p><strong>Sleep Quality:</strong> ${data.psychology.sleep_quality || 'N/A'}</p>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${data.guidance ? `
+                    <div class="bg-amber-900/20 border border-amber-500/50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 text-amber-300">AI Guidance</h3>
+                        <div class="text-slate-200 whitespace-pre-wrap text-sm leading-relaxed">
+                            ${data.guidance}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${data.hospitals && data.hospitals.length > 0 ? `
+                    <div class="bg-emerald-900/20 border border-emerald-500/50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 text-emerald-300">Nearby Hospitals</h3>
+                        <div class="space-y-3">
+                            ${data.hospitals.map(hospital => `
+                                <div class="flex gap-4">
+                                    <i class="fas fa-hospital-alt text-emerald-400 text-lg"></i>
+                                    <div class="flex-1">
+                                        <p class="font-semibold">${hospital.name || 'Hospital'}</p>
+                                        <p class="text-sm text-slate-400">${hospital.address || 'Location not available'}</p>
+                                        ${hospital.phone ? `<p class="text-sm text-emerald-300 mt-1"><i class="fas fa-phone"></i> ${hospital.phone}</p>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <div class="bg-rose-900/20 border border-rose-500/30 rounded-lg p-4">
+                        <p class="text-xs text-rose-100/80">
+                            <strong>Important:</strong> This is a medical decision support tool only. Always consult a qualified medical professional before making any health decisions.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button onclick="window.location.href='/' " class="flex-1 px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition">
+                            Start New Assessment
+                        </button>
+                        <button onclick="window.location.href='/symptoms'" class="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition">
+                            Back to Symptoms
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prediction Results</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+</head>
+
+<body class="bg-[#0B1120] text-white">
+
+<!-- ✅ NAVBAR (kept from old code) -->
+<nav class="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0B1120]/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                <span class="font-bold text-slate-900 text-xl">GPD</span>
+            </div>
+            <span class="font-bold text-lg">Prediction Results</span>
+        </div>
+    </div>
+</nav>
+
+<!-- ✅ MAIN -->
+<main class="pt-32 pb-20">
+    <div class="max-w-4xl mx-auto px-6 space-y-8" id="app">
+
+        <!-- Loading -->
+        <div id="loading" class="text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sky-600/20 border border-sky-500 mb-4">
+                <i class="fas fa-spinner fa-spin text-2xl text-sky-400"></i>
+            </div>
+            <h1 class="text-2xl font-bold">Analyzing Results...</h1>
+        </div>
+
+    </div>
+</main>
+
+<script>
+
+/* ===== LOAD DATA ===== */
+let data = {};
+try {
+    data = JSON.parse(sessionStorage.getItem("prediction_result") || "{}");
+} catch (error) {
+    console.error("Failed to parse prediction_result:", error);
+    data = {};
+}
+
+/* OPTIONAL API */
+// fetch("/predict").then(res=>res.json()).then(render);
+
+// Get user's geolocation
+let userLocation = null;
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            setTimeout(() => render(data), 800);
+        },
+        (error) => {
+            console.log("Geolocation denied, showing without distances");
+            setTimeout(() => render(data), 800);
+        }
+    );
+} else {
+    setTimeout(() => render(data), 800);
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeHospitalModal();
+    }
+});
+
+/* ===== HAVERSINE DISTANCE FORMULA ===== */
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(1);
+}
+
+// City coordinates for hospitals
+const cityCoordinates = {
+    "new delhi": [28.7041, 77.1025],
+    "delhi": [28.7041, 77.1025],
+    "rishikesh": [30.0893, 78.2679],
+    "dehradun": [30.3165, 78.0322],
+    "haridwar": [29.9457, 78.1642],
+    "lucknow": [26.8467, 80.9462],
+    "gurgaon": [28.4595, 77.0266],
+    "bhopal": [23.1815, 79.9864],
+    "mumbai": [19.0760, 72.8777],
+    "bangalore": [12.9716, 77.5946],
+    "hyderabad": [17.3850, 78.4867],
+    "kolkata": [22.5726, 88.3639],
+    "chennai": [13.0827, 80.2707],
+    "pune": [18.5204, 73.8567],
+    "ahmedabad": [23.0225, 72.5714],
+    "jaipur": [26.9124, 75.7873],
+    "surat": [21.1702, 72.8311],
+    "chandigarh": [30.7333, 76.7794],
+    "indore": [22.7196, 75.8577],
+    "visakhapatnam": [17.6869, 83.2185],
+    "nagpur": [21.1458, 79.0882],
+    "kochi": [9.9312, 76.2673],
+    "noida": [28.5355, 77.3910],
+    "thane": [19.2183, 72.9781],
+    "nashik": [19.9975, 73.7898],
+    "aurangabad": [19.8762, 75.3433],
+    "vadodara": [22.3072, 73.1812],
+    "ghaziabad": [28.6692, 77.4538],
+    "ludhiana": [30.9010, 75.8573],
+    "agra": [27.1767, 78.0081],
+    "jabalpur": [23.1815, 79.9864],
+    "ranchi": [23.3441, 85.3096],
+    "srinagar": [34.0837, 74.7973],
+    "coimbatore": [11.0026, 76.9124],
+    "allahabad": [25.4358, 81.8463],
+    "varanasi": [25.3176, 82.9739],
+    "amritsar": [31.6340, 74.8723],
+    "guwahati": [26.1445, 91.7362],
+    "mysore": [12.2958, 76.6394],
+    "madurai": [9.9252, 78.1198],
+    "jolly grant": [30.1928, 78.2345]
+};
+
+/* ===== HOSPITAL IMAGE MAPPING ===== */
+const hospitalImageMap = {
+    "aiims delhi": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/AIIMS_Delhi_Entrance.jpg/1280px-AIIMS_Delhi_Entrance.jpg",
+    "safdarjung hospital": "https://images.unsplash.com/photo-1587280382918-e21cc028cb29?w=600&h=400&fit=crop&auto=format&q=80",
+    "fortis escorts heart institute": "https://images.unsplash.com/photo-1576091160550-112173f7f869?w=600&h=400&fit=crop&auto=format&q=80",
+    "apollo hospital": "https://images.unsplash.com/photo-1631217975996-440c04e8645e?w=600&h=400&fit=crop&auto=format&q=80",
+    "max super speciality hospital": "https://images.unsplash.com/photo-1579154204601-01d719ae4e22?w=600&h=400&fit=crop&auto=format&q=80",
+    "sir ganga ram hospital": "https://images.unsplash.com/photo-1516627145497-ae6968895b2b?w=600&h=400&fit=crop&auto=format&q=80",
+    "blk max hospital": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=400&fit=crop&auto=format&q=80",
+    "aiims rishikesh": "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop&auto=format&q=80",
+    "doon hospital": "https://images.unsplash.com/photo-1584308666744-24d5f400f6f6?w=600&h=400&fit=crop&auto=format&q=80",
+};
+
+const fallbackImages = [
+    "https://images.unsplash.com/photo-1587280382918-e21cc028cb29?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1576091160550-112173f7f869?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1631217975996-440c04e8645e?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1579154204601-01d719ae4e22?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1516627145497-ae6968895b2b?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1584308666744-24d5f400f6f6?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop"
+];
+
+function getHospitalImage(hospitalName) {
+    const nameLower = hospitalName.toLowerCase();
+    
+    // Check if we have a specific image for this hospital
+    if (hospitalImageMap[nameLower]) {
+        return hospitalImageMap[nameLower];
+    }
+    
+    // Check for partial matches
+    for (const [key, value] of Object.entries(hospitalImageMap)) {
+        if (nameLower.includes(key) || key.includes(nameLower)) {
+            return value;
+        }
+    }
+    
+    // Use fallback image based on hospital name hash
+    const imgIndex = Math.abs(hash(hospitalName)) % fallbackImages.length;
+    return fallbackImages[imgIndex];
+}
+
+function generatePlaceholderSVG(text) {
+    const colors = ['#0ea5e9', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+    const colorIndex = Math.abs(hash(text)) % colors.length;
+    const color = colors[colorIndex];
+    
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Crect fill='%231e293b' width='600' height='400'/%3E%3Crect fill='${encodeURIComponent(color)}' width='600' height='60' y='170'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23f1f5f9' font-size='28' font-family='Arial' font-weight='bold'%3E%3Ctspan x='300' dy='0'%3E%F0%9F%8F%A5%3C/tspan%3E%3C/text%3E%3Ctext x='50%25' y='220' text-anchor='middle' fill='${encodeURIComponent(color)}' font-size='18' font-family='Arial'%3E${encodeURIComponent(text)}%3C/text%3E%3C/svg%3E`;
+}
+
+/* ===== HOSPITAL MODAL FUNCTIONS ===== */
+function openHospitalModal(hospitalIndex) {
+    const hospital = data.hospitals[hospitalIndex];
+    if (!hospital) return;
+    
+    console.log("Opening hospital:", hospital);
+    console.log("User location:", userLocation);
+    
+    // Calculate distance using geolocation
+    let distance = 'Calculating...';
+    let distanceValue = 0;
+    
+    if (userLocation && userLocation.lat && userLocation.lng) {
+        const hospitalCity = hospital.city.toLowerCase();
+        console.log("Hospital city:", hospitalCity);
+        
+        const coords = cityCoordinates[hospitalCity];
+        if (coords) {
+            distanceValue = calculateDistance(userLocation.lat, userLocation.lng, coords[0], coords[1]);
+            distance = distanceValue;
+            console.log("Calculated distance from geo API:", distance, "km");
+        } else {
+            console.log("City coordinates not found for:", hospitalCity);
+            distance = 'Location not calculated';
+        }
+    } else if (hospital.distance !== undefined && hospital.distance !== null) {
+        // Fallback to backend distance
+        distance = hospital.distance;
+        console.log("Using backend distance:", distance);
+    } else {
+        console.log("No location data available");
+        distance = 'Please enable location access';
+    }
+    
+    // Get hospital image
+    const imageUrl = getHospitalImage(hospital.name);
+    console.log("Using image:", imageUrl);
+    
+    // Create a new image element to test load before displaying
+    const testImg = new Image();
+    testImg.crossOrigin = "anonymous";
+    testImg.onload = function() {
+        console.log("Image loaded successfully");
+        document.getElementById('modalHospitalImage').src = imageUrl;
+    };
+    testImg.onerror = function() {
+        console.log("Image failed to load, using SVG placeholder");
+        try {
+            const imgIndex = Math.abs(hash(hospital.name)) % fallbackImages.length;
+            document.getElementById('modalHospitalImage').src = fallbackImages[imgIndex];
+            
+            // If that also fails, use SVG
+            setTimeout(() => {
+                const img = document.getElementById('modalHospitalImage');
+                if (!img.complete || img.naturalHeight === 0) {
+                    console.log("Fallback image also failed, using SVG");
+                    img.src = generatePlaceholderSVG(hospital.type + " Hospital");
+                }
+            }, 2000);
+        } catch (e) {
+            console.log("Error setting fallback:", e);
+            document.getElementById('modalHospitalImage').src = generatePlaceholderSVG(hospital.type + " Hospital");
+        }
+    };
+    testImg.src = imageUrl;
+    
+    // Set a timeout fallback
+    setTimeout(() => {
+        const imgElement = document.getElementById('modalHospitalImage');
+        if (!imgElement.src || imgElement.src === '') {
+            console.log("Image timeout, setting SVG");
+            try {
+                const imgIndex = Math.abs(hash(hospital.name)) % fallbackImages.length;
+                imgElement.src = fallbackImages[imgIndex];
+                
+                setTimeout(() => {
+                    if (!imgElement.complete || imgElement.naturalHeight === 0) {
+                        imgElement.src = generatePlaceholderSVG(hospital.type + " Hospital");
+                    }
+                }, 1500);
+            } catch (e) {
+                imgElement.src = generatePlaceholderSVG(hospital.type + " Hospital");
+            }
+        }
+    }, 3000);
+    
+    // Populate modal
+    document.getElementById('modalHospitalName').textContent = hospital.name;
+    document.getElementById('modalHospitalFullName').textContent = hospital.name;
+    document.getElementById('modalHospitalType').textContent = hospital.type.charAt(0).toUpperCase() + hospital.type.slice(1);
+    
+    // Stars
+    const stars = Math.round(hospital.rating || 4);
+    let starDisplay = '';
+    for (let i = 0; i < 5; i++) {
+        starDisplay += i < stars ? '★' : '☆';
+    }
+    document.getElementById('modalHospitalStars').textContent = starDisplay;
+    document.getElementById('modalHospitalRating').textContent = `${(hospital.rating || 4).toFixed(1)}/5`;
+    
+    document.getElementById('modalHospitalAddress').textContent = hospital.address || 'Address not available';
+    document.getElementById('modalHospitalPhone').textContent = hospital.phone || 'Contact not available';
+    
+    // Distance display - using geo API
+    const distanceElement = document.getElementById('modalHospitalDistance');
+    if (distance && distance !== 'Calculating...' && distance !== 'Location not calculated' && distance !== 'Please enable location access') {
+        distanceElement.innerHTML = `<i class="fas fa-location-arrow text-sky-400 mr-2"></i>${distance} km from your location`;
+        distanceElement.style.fontWeight = 'bold';
+        distanceElement.style.color = '#0ea5e9';
+    } else if (distance === 'Please enable location access') {
+        distanceElement.innerHTML = `<i class="fas fa-map-pin text-amber-400 mr-2"></i>${distance}`;
+        distanceElement.style.color = '#f59e0b';
+    } else {
+        distanceElement.innerHTML = `<i class="fas fa-map-pin text-slate-400 mr-2"></i>${distance}`;
+        distanceElement.style.color = '#94a3b8';
+    }
+    
+    // Specialties
+    const specialtiesContainer = document.getElementById('modalHospitalSpecialties');
+    specialtiesContainer.innerHTML = '';
+    if (hospital.specialties && hospital.specialties.length > 0) {
+        hospital.specialties.forEach(spec => {
+            const badge = document.createElement('span');
+            badge.className = 'px-3 py-1 bg-emerald-900/40 border border-emerald-500/50 rounded-full text-xs text-emerald-300';
+            badge.textContent = spec.charAt(0).toUpperCase() + spec.slice(1);
+            specialtiesContainer.appendChild(badge);
+        });
+    } else {
+        specialtiesContainer.innerHTML = '<span class="text-sm text-slate-400">Not available</span>';
+    }
+    
+    // Show modal
+    document.getElementById('hospitalModal').classList.remove('hidden');
+}
+
+function closeHospitalModal() {
+    document.getElementById('hospitalModal').classList.add('hidden');
+}
+
+// Simple hash function for consistent image selection
+function hash(str) {
+    let hashVal = 0;
+    for (let i = 0; i < str.length; i++) {
+        hashVal = ((hashVal << 5) - hashVal) + str.charCodeAt(i);
+        hashVal = hashVal & hashVal;
+    }
+    return hashVal;
+}
+
+/* ===== RENDER FUNCTION ===== */
+function render(data){
+
+    const container = document.getElementById("app");
+
+    if(!data || Object.keys(data).length === 0){
+        container.innerHTML = `
+            <div class="bg-slate-900/80 border border-slate-700 rounded-xl p-8 text-center">
+                <h2 class="text-2xl font-bold mb-4">No prediction data found</h2>
+                <p class="text-slate-400 mb-6">Please submit your symptoms first.</p>
+                <button onclick="window.location.href='/symptoms'" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 rounded-lg text-white font-bold">Go to Symptoms</button>
+            </div>`;
+        return;
+    }
+
+    if (data.error || data.ml?.error) {
+        const message = data.error || data.ml.error;
+        container.innerHTML = `
+            <div class="bg-rose-900/20 border border-rose-500 rounded-xl p-8 text-center">
+                <h2 class="text-2xl font-bold mb-3">Prediction Error</h2>
+                <p class="text-slate-300 mb-4">${message}</p>
+                <button onclick="window.location.href='/symptoms'" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 rounded-lg text-white font-bold">Try Again</button>
+            </div>`;
+        return;
+    }
+
+    if (!data.ml?.top3?.length) {
+        container.innerHTML = `
+            <div class="bg-amber-900/20 border border-amber-500 rounded-xl p-8 text-center">
+                <h2 class="text-2xl font-bold mb-3">No prediction available</h2>
+                <p class="text-slate-300 mb-4">Your information was received, but the model could not produce a prediction.</p>
+                <button onclick="window.location.href='/symptoms'" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 rounded-lg text-white font-bold">Review Symptoms</button>
+            </div>`;
+        return;
+    }
+
+    const top = data.ml.top3[0];
+    const confidence = Number.isFinite(top.probability) ? Math.round(top.probability * 100) : 0;
+
+    /* ===== STATUS ===== */
+    let status = "Low Confidence ❌";
+    let statusColor = "text-red-400";
+
+    if(confidence >= 80){
+        status = "High Confidence ✅";
+        statusColor = "text-emerald-400";
+    } else if(confidence >= 50){
+        status = "Moderate Confidence ⚠";
+        statusColor = "text-yellow-400";
+    }
+
+    /* ===== UI ===== */
+    container.innerHTML = `
+
+    <!-- STATUS -->
+    <div class="bg-gradient-to-r from-emerald-900/40 to-sky-900/40 border border-emerald-500/50 rounded-xl p-6">
+        <h2 class="text-2xl font-bold">Prediction Result</h2>
+        <p class="${statusColor} font-bold mt-2">Status: ${status}</p>
+
+        <div class="mt-4 space-y-1">
+            <p><strong>Disease:</strong> ${top?.disease || data.ml?.prediction || "N/A"}</p>
+            <p><strong>Confidence:</strong> ${Number.isFinite(confidence) ? confidence + '%' : '0%'}</p>
+        </div>
+    </div>
+
+    <!-- TOP PROBABILITIES -->
+    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+        <h3 class="text-xl font-bold mb-4">Top Probabilities</h3>
+
+        ${(data.ml?.top3 || []).map(d => `
+            <div class="mb-4">
+                <div class="flex justify-between">
+                    <span>${d.disease}</span>
+                    <span>${(d.probability*100).toFixed(1)}%</span>
+                </div>
+                <div class="w-full bg-slate-700 h-2 rounded mt-1">
+                    <div class="bg-sky-500 h-2 rounded" style="width:${d.probability*100}%"></div>
+                </div>
+            </div>
+        `).join("")}
+    </div>
+
+    <!-- POSSIBLE SYMPTOMS -->
+    ${data.possible_symptoms?.length ? `
+    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+        <h3 class="text-xl font-bold mb-4">Possible Symptoms</h3>
+        <ul class="list-disc pl-6 text-sm space-y-1">
+            ${data.possible_symptoms.map(s => `<li>${s}</li>`).join("")}
+        </ul>
+    </div>
+    ` : ""}
+
+    <!-- ACTION -->
+    ${data.recommended_action ? `
+    <div class="bg-amber-900/20 border border-amber-500/50 rounded-xl p-6">
+        <h3 class="text-xl font-bold mb-4 text-amber-300">Recommended Action</h3>
+        <p class="text-sm">${data.recommended_action}</p>
+    </div>
+    ` : ""}
+
+    <!-- HOSPITALS -->
+    ${data.hospitals?.length ? `
+    <div class="bg-emerald-900/20 border border-emerald-500/50 rounded-xl p-6">
+        <h3 class="text-xl font-bold mb-4 text-emerald-300">Nearby Hospitals</h3>
+        <div class="space-y-4">
+            ${data.hospitals.map((h, idx) => {
+                let distanceDisplay = '';
+                if (userLocation && h.city) {
+                    const coords = cityCoordinates[h.city.toLowerCase()];
+                    if (coords) {
+                        const distance = calculateDistance(userLocation.lat, userLocation.lng, coords[0], coords[1]);
+                        distanceDisplay = distance;
+                    }
+                } else if (h.distance !== undefined) {
+                    distanceDisplay = h.distance;
+                }
+                
+                // Star rating display
+                const stars = Math.round(h.rating || 4);
+                let starDisplay = '<span class="text-yellow-400">';
+                for (let i = 0; i < 5; i++) {
+                    starDisplay += i < stars ? '★' : '☆';
+                }
+                starDisplay += '</span>';
+                
+                return `
+                    <div class="p-4 bg-slate-900/40 rounded-lg border border-slate-700/50 hover:border-emerald-500/30 transition cursor-pointer group" 
+                         onclick="openHospitalModal(${idx})" 
+                         data-hospital-id="${idx}">
+                        <div class="flex gap-4 items-start">
+                            <i class="fas fa-hospital-alt text-emerald-400 text-xl mt-1 group-hover:scale-110 transition"></i>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p class="font-semibold text-lg group-hover:text-emerald-300 transition">${h.name || 'Hospital'}</p>
+                                        <p class="text-xs text-slate-400 capitalize">${h.type || 'Hospital'}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm">${starDisplay}</div>
+                                        <p class="text-xs text-slate-400 mt-1">${(h.rating || 4).toFixed(1)}/5</p>
+                                    </div>
+                                </div>
+                                
+                                ${h.address ? `<p class="text-sm text-slate-400 mb-3">${h.address}</p>` : ""}
+                                
+                                <div class="flex gap-3 items-center text-sm mb-3">
+                                    ${distanceDisplay ? `<span class="text-sky-300"><i class="fas fa-map-marker-alt"></i> ${distanceDisplay} km away</span>` : ""}
+                                    ${h.phone ? `<span class="text-emerald-300"><i class="fas fa-phone"></i> ${h.phone}</span>` : ""}
+                                </div>
+                                
+                                <p class="text-xs text-slate-500 group-hover:text-sky-400 transition"><i class="fas fa-image"></i> Click to view hospital details</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    </div>
+    ` : ""}
+    
+    <!-- HOSPITAL MODAL -->
+    <div id="hospitalModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" 
+         onclick="if(event.target === this) closeHospitalModal()">
+        <div class="bg-slate-900 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            <div class="sticky top-0 bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
+                <h2 id="modalHospitalName" class="text-xl font-bold text-white">Hospital Details</h2>
+                <button onclick="closeHospitalModal()" class="text-slate-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <!-- Hospital Image -->
+<div class="w-full h-64 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg overflow-hidden border border-slate-700 flex items-center justify-center">
+                <img id="modalHospitalImage" src="" alt="Hospital" class="w-full h-full object-cover" style="background-color: #1e293b;">
+                </div>
+                
+                <!-- Hospital Info -->
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wide">Hospital Name</p>
+                        <p id="modalHospitalFullName" class="text-lg font-semibold text-white"></p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wide">Type</p>
+                            <p id="modalHospitalType" class="text-sm font-semibold text-emerald-400"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wide">Rating</p>
+                            <div class="flex items-center gap-2">
+                                <span id="modalHospitalStars" class="text-sm text-yellow-400"></span>
+                                <span id="modalHospitalRating" class="text-sm font-semibold text-slate-300"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wide">Address</p>
+                        <p id="modalHospitalAddress" class="text-sm text-slate-200"></p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wide">Phone</p>
+                            <p id="modalHospitalPhone" class="text-sm font-semibold text-emerald-300"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase tracking-wide">Distance</p>
+                            <p id="modalHospitalDistance" class="text-sm font-semibold text-sky-300"></p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wide">Specialties</p>
+                        <div id="modalHospitalSpecialties" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mt-4">
+                    <p class="text-sm text-blue-200">
+                        <i class="fas fa-phone text-blue-400 mr-2"></i>
+                        For more information or to make an appointment, call the hospital directly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PSYCHOLOGY -->
+    ${data.psychology ? `
+    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+        <h3 class="text-xl font-bold mb-4">Psychological Screening</h3>
+        <div class="text-sm space-y-2">
+            <p><strong>Stress:</strong> ${data.psychology.stress || "N/A"}</p>
+            <p><strong>Anxiety:</strong> ${data.psychology.anxiety || "N/A"}</p>
+            <p><strong>Sleep:</strong> ${data.psychology.sleep || data.psychology.sleep_quality || "N/A"}</p>
+        </div>
+    </div>
+    ` : ""}
+
+                        ${data.guidance ? `
+                    <div class="bg-amber-900/20 border border-amber-500/50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 text-amber-300">AI Guidance</h3>
+                        <div class="text-slate-200 whitespace-pre-wrap text-sm leading-relaxed">
+                            ${data.guidance}
+                        </div>
+                    </div>
+                    ` : ''}
+
+    <!-- DISCLAIMER -->
+    <div class="bg-rose-900/20 border border-rose-500/30 rounded-lg p-4">
+        <p class="text-xs text-rose-100/80">
+            <strong>Important:</strong> This is a medical decision support tool only.
+        </p>
+    </div>
+
+    <!-- BUTTONS -->
+    <div class="flex gap-4">
+        <button onclick="window.location.href='/'" class="flex-1 px-6 py-3 bg-sky-600 hover:bg-sky-500 rounded-lg font-bold">
+            Start New Assessment
+        </button>
+        <button onclick="window.location.href='/symptoms'" class="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold">
+            Back to Symptoms
+        </button>
+    </div>
+
+    `;
+}
+
+</script>
+
+</body>
+</html>
