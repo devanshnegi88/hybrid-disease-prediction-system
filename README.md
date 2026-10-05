@@ -7,7 +7,8 @@
 <p align="center">
 
 **🌐 Live Demo:**  
-<a href=" https://hybrid-disease-prediction-system-2.onrender.com  ">hybrid-disease-prediction-system-1.onrender.com</a>
+<a href="https://hybrid-disease-prediction-system-2.onrender.com">https://hybrid-disease-prediction-system-2.onrender.com
+</a>
 
 </p>
 
@@ -314,7 +315,7 @@ http://127.0.0.1:5000/
 
 ### Try the Application
 
-**  https://hybrid-disease-prediction-system-2.onrender.com/symptoms**
+**  https://hybrid-disease-prediction-system-2.onrender.com**
 
 > The application is deployed on Render and can be accessed directly through the live URL.
 
