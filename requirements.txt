@@ -11,3 +11,5 @@ setuptools>=70.0.0
 wheel>=0.45.0
 google-generativeai==0.8.5
 pytest
+
+Werkzeug==3.0.6
