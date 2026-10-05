@@ -7,7 +7,7 @@
 <p align="center">
 
 **🌐 Live Demo:**  
-<a href=" https://hybrid-disease-prediction-system-2.onrender.com/symptoms  ">hybrid-disease-prediction-system-1.onrender.com</a>
+<a href=" https://hybrid-disease-prediction-system-2.onrender.com  ">hybrid-disease-prediction-system-1.onrender.com</a>
 
 </p>
 
