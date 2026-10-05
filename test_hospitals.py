@@ -1,14 +1,23 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.services.hospital_finder import find_hospitals_for_disease
 
-# Test the function
-hospitals = find_hospitals_for_disease("fever", "new delhi")
-print("Hospitals found:")
-for hospital in hospitals:
-    print(f"Name: {hospital['name']}")
-    print(f"Phone: {hospital.get('phone', 'No phone')}")
-    print(f"Address: {hospital.get('address', 'No address')}")
-    print("---")
+
+def test_find_hospitals_for_disease():
+    hospitals = find_hospitals_for_disease("fever", "new delhi")
+
+    assert hospitals is not None
+    assert isinstance(hospitals, list)
+
+
+def test_hospital_data_structure():
+    hospitals = find_hospitals_for_disease("fever", "new delhi")
+
+    if hospitals:
+        hospital = hospitals[0]
+
+        assert isinstance(hospital, dict)
+        assert "name" in hospital
